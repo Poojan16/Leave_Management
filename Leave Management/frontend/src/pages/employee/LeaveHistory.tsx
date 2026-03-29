@@ -19,7 +19,7 @@ import type { GetMyLeavesParams } from '@/api/leaves'
 type SortField = 'start_date' | 'end_date' | 'created_at' | 'status' | 'days'
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: '',          label: 'All Statuses' },
+  { value: '__all__',   label: 'All Statuses' },
   { value: 'pending',   label: 'Pending' },
   { value: 'approved',  label: 'Approved' },
   { value: 'rejected',  label: 'Rejected' },
@@ -88,13 +88,13 @@ export default function LeaveHistory() {
             {/* Status */}
             <div className="w-40">
               <Select
-                value={filters.status ?? ''}
-                onValueChange={(v) => setFilter('status', v)}
+                value={filters.status ?? '__all__'}
+                onValueChange={(v) => setFilter('status', v === '__all__' ? '' : v)}
               >
                 <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value || '__all__'}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

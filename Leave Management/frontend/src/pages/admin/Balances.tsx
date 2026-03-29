@@ -46,10 +46,10 @@ export default function Balances() {
             </Select>
           </div>
           <div className="w-52">
-            <Select value={userId ? String(userId) : ''} onValueChange={(v) => setUserId(v ? Number(v) : undefined)}>
+            <Select value={userId ? String(userId) : '__all__'} onValueChange={(v) => setUserId(v === '__all__' ? undefined : Number(v))}>
               <SelectTrigger><SelectValue placeholder="All employees" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Employees</SelectItem>
+                <SelectItem value="__all__">All Employees</SelectItem>
                 {users?.items.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.first_name} {u.last_name}</SelectItem>)}
               </SelectContent>
             </Select>

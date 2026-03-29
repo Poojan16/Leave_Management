@@ -20,10 +20,16 @@ function _processQueue(error: unknown, token: string | null) {
 
 // ── Request interceptor ───────────────────────────────────────────────────────
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Lazy-import store to avoid circular deps at module load time
-  const { useAuthStore } = require('@/store/authStore')
-  const token: string | null = useAuthStore.getState().accessToken
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  // Read token directly from localStorage to avoid circular import with authStore
+  try {
+    const raw = localStorage.getItem('lms-auth')
+    if (raw) {
+      const token = JSON.parse(raw)?.state?.accessToken as string | null
+      if (token) config.headers.Authorization = `Bearer ${token}`
+    }
+  } catch {
+    // ignore parse errors
+  }
   return config
 })
 
@@ -39,8 +45,7 @@ apiClient.interceptors.response.use(
 
     // Skip refresh for the refresh endpoint itself
     if (original.url?.includes('/auth/refresh') || original.url?.includes('/auth/login')) {
-      const { useAuthStore } = require('@/store/authStore')
-      useAuthStore.getState().clearAuth()
+      localStorage.removeItem('lms-auth')
       window.location.href = '/login'
       return Promise.reject(normalizeError(error))
     }
@@ -58,8 +63,8 @@ apiClient.interceptors.response.use(
     _isRefreshing = true
 
     try {
-      const { useAuthStore } = require('@/store/authStore')
-      const refreshToken: string | null = useAuthStore.getState().refreshToken
+      const raw = localStorage.getItem('lms-auth')
+      const refreshToken = raw ? (JSON.parse(raw)?.state?.refreshToken as string | null) : null
 
       if (!refreshToken) throw new Error('No refresh token')
 
@@ -68,6 +73,8 @@ apiClient.interceptors.response.use(
         { refresh_token: refreshToken }
       )
 
+      // Update persisted store directly so authStore stays in sync
+      const { useAuthStore } = await import('@/store/authStore')
       useAuthStore.getState().setAuth(data.user, data.access_token, data.refresh_token)
       _processQueue(null, data.access_token)
 
@@ -75,8 +82,7 @@ apiClient.interceptors.response.use(
       return apiClient(original)
     } catch (refreshError) {
       _processQueue(refreshError, null)
-      const { useAuthStore } = require('@/store/authStore')
-      useAuthStore.getState().clearAuth()
+      localStorage.removeItem('lms-auth')
       window.location.href = '/login'
       return Promise.reject(normalizeError(error))
     } finally {

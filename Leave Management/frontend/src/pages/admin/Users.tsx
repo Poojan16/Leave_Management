@@ -85,10 +85,10 @@ function UserFormDialog({ user, open, onClose }: { user?: User; open: boolean; o
           </div>
           <div className="space-y-1">
             <Label>Department</Label>
-            <Select value={String(form.dept_id ?? '')} onValueChange={(v) => set('dept_id', v ? Number(v) : '')}>
+            <Select value={form.dept_id ? String(form.dept_id) : '__none__'} onValueChange={(v) => set('dept_id', v === '__none__' ? '' : Number(v))}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {depts?.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -139,10 +139,10 @@ export default function Users() {
             </Select>
           </div>
           <div className="w-36">
-            <Select value={filters.is_active === undefined ? '' : String(filters.is_active)} onValueChange={(v) => setFilters((f) => ({ ...f, is_active: v === '' ? undefined : v === 'true', page: 1 }))}>
+            <Select value={filters.is_active === undefined ? '__all__' : String(filters.is_active)} onValueChange={(v) => setFilters((f) => ({ ...f, is_active: v === '__all__' ? undefined : v === 'true', page: 1 }))}>
               <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="__all__">All</SelectItem>
                 <SelectItem value="true">Active</SelectItem>
                 <SelectItem value="false">Inactive</SelectItem>
               </SelectContent>
