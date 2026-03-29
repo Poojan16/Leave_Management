@@ -1,67 +1,101 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional
 from datetime import date, datetime
-from app.models.leave import LeaveTypeEnum, LeaveStatusEnum
+from math import ceil
+from typing import Optional
+
+from pydantic import BaseModel, field_validator, model_validator
 
 
-class LeaveBase(BaseModel):
-    leave_type: LeaveTypeEnum
+# ── Request schemas ───────────────────────────────────────────────────────────
+
+class LeaveApplyRequest(BaseModel):
+    leave_type_id: int
     start_date: date
     end_date: date
-    reason: str = Field(..., min_length=10, max_length=1000)
+    reason: str
 
-    @field_validator('start_date')
+    @field_validator("reason")
     @classmethod
-    def validate_start_date(cls, v):
-        if v < date.today():
-            raise ValueError('Start date cannot be in the past')
-        return v
+    def reason_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Reason cannot be blank.")
+        return v.strip()
 
-    @model_validator(mode='after')
-    def validate_dates(self):
+    @model_validator(mode="after")
+    def end_gte_start(self) -> "LeaveApplyRequest":
         if self.end_date < self.start_date:
-            raise ValueError('End date must be after or equal to start date')
+            raise ValueError("end_date must be on or after start_date.")
         return self
 
-    @field_validator('reason')
-    @classmethod
-    def validate_reason(cls, v):
-        if len(v.strip()) < 10:
-            raise ValueError('Reason must be at least 10 characters long')
-        return v
+
+class CancelRequest(BaseModel):
+    reason: Optional[str] = None
 
 
-class LeaveCreate(LeaveBase):
-    pass
+# ── Nested output schemas ─────────────────────────────────────────────────────
 
-
-class LeaveUpdate(BaseModel):
-    status: LeaveStatusEnum
-    remarks: Optional[str] = Field(None, max_length=1000)
-
-
-class LeaveResponse(LeaveBase):
+class LeaveTypeInfo(BaseModel):
     id: int
-    user_id: int
-    status: LeaveStatusEnum
-    remarks: Optional[str] = None
+    name: str
+    max_days_per_year: int
+
+    model_config = {"from_attributes": True}
+
+
+class UserBrief(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    employee_id: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── LeaveOut ──────────────────────────────────────────────────────────────────
+
+class LeaveOut(BaseModel):
+    id: int
+    user: UserBrief
+    leave_type: LeaveTypeInfo
+    start_date: date
+    end_date: date
+    days: int
+    status: str
+    reason: str
     created_at: datetime
-    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
-class LeaveResponseWithUser(LeaveResponse):
-    user: Optional[dict] = None
+# ── LeaveListOut ──────────────────────────────────────────────────────────────
 
-    class Config:
-        from_attributes = True
-
-
-class LeaveListResponse(BaseModel):
-    success: bool = True
-    message: str = "Leaves retrieved successfully"
-    data: list[dict]  # Allow dict to include user info
+class LeaveListOut(BaseModel):
+    items: list[LeaveOut]
     total: int
+    page: int
+    pages: int
 
+
+# ── BalanceOut ────────────────────────────────────────────────────────────────
+
+class BalanceOut(BaseModel):
+    leave_type: LeaveTypeInfo
+    allocated: int
+    carried_forward: int
+    used: int
+    remaining: int
+
+    model_config = {"from_attributes": True}
+
+
+# ── CalendarLeaveOut ──────────────────────────────────────────────────────────
+
+class CalendarLeaveOut(BaseModel):
+    id: int
+    leave_type: LeaveTypeInfo
+    start_date: date
+    end_date: date
+    days: int
+    status: str
+
+    model_config = {"from_attributes": True}
