@@ -1,0 +1,36 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy backend to Render
+        run: curl -fsSL "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
+      - name: Deploy frontend to Vercel
+        run: |
+          npm install -g vercel
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+      - name: Smoke test — backend health
+        run: |
+          sleep 30
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.BACKEND_URL }}/health")
+          echo "Backend health status: $STATUS"
+          [ "$STATUS" = "200" ] || (echo "Backend health check failed" && exit 1)
+
+      - name: Smoke test — frontend
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.FRONTEND_URL }}")
+          echo "Frontend status: $STATUS"
+          [ "$STATUS" = "200" ] || (echo "Frontend health check failed" && exit 1)
